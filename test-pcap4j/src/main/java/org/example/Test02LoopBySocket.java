@@ -15,12 +15,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TestLoopBySocket {
+public class Test02LoopBySocket {
     public static void main(String[] args) throws PcapNativeException, NotOpenException, IOException, InterruptedException {
 
         PcapNetworkInterface nif;
         try {
             nif = new NifSelector().selectNetworkInterface(); // 这个方法提供用户输入网卡的序号
+            //需要选择本地回环地址
         } catch (IOException e) {
             e.printStackTrace();
             return;
@@ -30,8 +31,20 @@ public class TestLoopBySocket {
         }
         System.out.println(nif.getName() + "(" + nif.getDescription() + ")");
 
-        final PcapHandle handle = nif.openLive(0, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 0);
-        final Socket socket = new Socket("127.0.0.1", 8090);
+//        final PcapHandle handle = nif.openLive(0, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 0);
+        PcapHandle handle = new PcapHandle.Builder(nif.getName())
+//                .direction(PcapHandle.PcapDirection.INOUT)
+                .immediateMode(true)
+                .promiscuousMode(PcapNetworkInterface.PromiscuousMode.PROMISCUOUS)
+//                .bufferSize(4096)
+                .build();
+
+
+        Socket socket=new Socket();
+        socket.bind(new InetSocketAddress(9999));//指定高端端口
+        socket.connect(new InetSocketAddress("192.168.0.106", 8090));
+
+
         if (socket.isConnected()) {
             System.out.println("网络连接成功");
         }
@@ -115,6 +128,8 @@ public class TestLoopBySocket {
 
         ExecutorService pool = Executors.newCachedThreadPool();
         handle.setFilter("tcp dst port 8080", BpfProgram.BpfCompileMode.OPTIMIZE);
+        PcapStat stats = handle.getStats();
+
         handle.loop(0, listener, pool); // This is better than handle.loop(5, listener);
         pool.shutdown();
         handle.close();
@@ -139,8 +154,8 @@ public class TestLoopBySocket {
     private synchronized static void sendPacket(Vector<TcpPacket> tcpPackets, AtomicInteger total, Socket socket, int packetCache) throws IOException {
         System.out.println("start to send package size=" + total.get());
         tcpPackets.sort(Comparator.comparingInt(o -> o.getHeader().getSequenceNumber()));//重新排序
-        double v = ((double) packetCache) / 3.0;
-        System.out.println("threshold=" + v);
+//        double v = ((double) packetCache) / 3.0;
+//        System.out.println("threshold=" + v);
         byte[] toSend = new byte[0];
         while (toSend.length < 128 && total.get() > 128) {
             TcpPacket remove = tcpPackets.remove(0);

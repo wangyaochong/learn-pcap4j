@@ -14,7 +14,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Hello world!
  */
-public class TestGetOnePacket {
+public class Test01GetOnePacket {
     public static void main(String[] args) throws UnknownHostException, PcapNativeException, NotOpenException, EOFException, TimeoutException {
         InetAddress addr = InetAddress.getByName("192.168.0.106");
         PcapNetworkInterface nif = Pcaps.getDevByAddress(addr);
